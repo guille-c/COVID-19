@@ -1,0 +1,26 @@
+import numpy as np
+import math
+
+def SEIR_forward (t, s0, e0, i0, r0, beta, sigma, gamma):
+    num_steps = len(t) - 1
+    
+    s = np.zeros(num_steps + 1)
+    e = np.zeros(num_steps + 1)
+    i = np.zeros(num_steps + 1)
+    r = np.zeros(num_steps + 1)
+
+    s[0] = s0
+    e[0] = e0
+    i[0] = i0
+    r[0] = r0
+
+    for step in range(num_steps):
+        dt = t[step+1]-t[step]
+        s[step+1] = s[step] + (-beta*i[step]*s[step])*dt
+        e[step+1] = e[step] + (beta*i[step]*s[step] - sigma*e[step])*dt
+        i[step+1] = i[step] + (sigma*e[step] - gamma*i[step])*dt
+        r[step+1] = r[step] + gamma*i[step]*dt
+        
+        
+    return s, e, i, r
+
