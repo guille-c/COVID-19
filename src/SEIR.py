@@ -81,7 +81,7 @@ def GridSearchSEIR (ts, i_real, s0, e0, i0, r0, backward = False):
                     s, e, i, r = SEIR_backward (ts, s0, e0, i0, r0, beta, sigma, gamma)
                 else:
                     s, e, i, r = SEIR_forward (ts, s0, e0, i0, r0, beta, sigma, gamma)
-                RMSE = ValidateSEIR (i+e, i_real)
+                RMSE = ValidateSEIR (i+r, i_real)
                 if (RMSE < min_[0]):
                     min_ = [RMSE, beta, sigma, gamma]
     return min_
@@ -134,7 +134,7 @@ def GridSearchSEIR_transport (ts, i_reals, s0s, e0s, i0s, r0s, transp):
         for sigma in sigmas:
             for gamma in gammas:
                 s, e, i, r = TransportSEIR_forward (ts, s0s, e0s, i0s, r0s, beta, sigma, gamma, transp)
-                RMSE = ValidateSEIR_transport (i+e, i_reals)
+                RMSE = ValidateSEIR_transport (i+r, i_reals)
 
                 if (RMSE < min_[0]):
                     min_ = [RMSE, beta, sigma, gamma]
