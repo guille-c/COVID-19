@@ -11,11 +11,9 @@ COPY ./requirements.txt /app/requirements.txt
 
 WORKDIR /app
 
-RUN python --version
 RUN pip install -r requirements.txt
 
 COPY . /app
 
 ENTRYPOINT [ "python" ]
-
 CMD [ "main.py" ]
