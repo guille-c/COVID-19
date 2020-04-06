@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block stylesheet %}
+<link
+    href="http://cdn.pydata.org/bokeh/release/bokeh-2.0.1.min.css"
+    rel="stylesheet" type="text/css">
+<link
+    href="http://cdn.pydata.org/bokeh/release/bokeh-widgets-2.0.1.min.css"
+    rel="stylesheet" type="text/css">
+
+<script src="http://cdn.pydata.org/bokeh/release/bokeh-2.0.1.min.js"></script>
+<script src="http://cdn.pydata.org/bokeh/release/bokeh-widgets-2.0.1.min.js"></script>
+
+{{ script_i|safe }}
+{{ script_seir|safe }}
+{% endblock %}
+
+{% block content %}
+<!-- bradcam_area  -->
+<div class="bradcam_area bradcam_bg_1">
+       <div class="container">
+           <div class="row">
+               <div class="col-xl-12">
+                   <div class="bradcam_text text-center">
+                       <h3>{{ region }}</h3>
+                   </div>
+               </div>
+               <div class="centered">
+                 {{ div_i|safe }}
+                 <br>
+                 <br>
+                 {{ div_seir|safe }}
+                 <br>
+                 <form class="form" action="{{ url_for('main') }}">
+                     <button type="submit" class="btn btn-warning">Volver</button>
+                 </form>
+              </div>
+           </div>
+       </div>
+   </div>
+   <!--/ bradcam_area  -->
+{% endblock %}
+
+{% block scripts %}
+
+<script src="https://cdn.bokeh.org/bokeh/release/bokeh-2.0.1.min.js"
+        crossorigin="anonymous"></script>
+<script src="https://cdn.bokeh.org/bokeh/release/bokeh-widgets-2.0.1.min.js"
+        crossorigin="anonymous"></script>
+<script src="https://cdn.bokeh.org/bokeh/release/bokeh-tables-2.0.1.min.js"
+        crossorigin="anonymous"></script>
+
+
+{% endblock %}
