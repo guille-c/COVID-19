@@ -6,7 +6,7 @@ def sigmoid(x, x0, k, b = 0., L = 1.):
     y = L / (1 + np.exp(-k*(x-x0)))+b
     return (y)
 
-def SEIR_exams (t, s0, e0, i0, r0, beta, sigma, gamma, a_date, k, 
+def SEIR_exams (t, s0, e0, i0, r0, c0, beta, sigma, gamma, a_date, k, 
                 a = 0., Imax = np.inf):
     num_steps = len(t) - 1
     
@@ -14,26 +14,30 @@ def SEIR_exams (t, s0, e0, i0, r0, beta, sigma, gamma, a_date, k,
     E = np.zeros(num_steps + 1)
     I = np.zeros(num_steps + 1)
     R = np.zeros(num_steps + 1)
-    I_m = np.zeros(num_steps + 1)
+    C = np.zeros(num_steps + 1)
+    C_m = np.zeros(num_steps + 1)
 
     S[0] = s0
     E[0] = e0
     I[0] = i0
-    I_m[0] = i0
     R[0] = r0
+    C[0] = c0
+    C_m[0] = c0
 
-    alphas = 1 + (a-1.)/(1+np.exp(-k*(t-a_date)))
+    alphas_I = 1 + (a-1.)/(1+np.exp(-k*(t-a_date)))
     for step in range(num_steps):
         dt = t[step+1]-t[step]
         S[step+1] = S[step] + (-beta*I[step]*S[step])*dt
         E[step+1] = E[step] + (beta*I[step]*S[step] - sigma*E[step])*dt
         I[step+1] = I[step] + (sigma*E[step] - gamma*I[step])*dt
         R[step+1] = R[step] + gamma*I[step]*dt
+        C[step+1] = C[step] + sigma*E[step]
+        C_m[step + 1] = C_m[step] + alphas_I[step]*sigma*E[step]  
         #I_m[step+1] = I_m[step] + alpha * sigma * E[step]
-        
-    return S, E, I, R, I*alphas, R*alphas
+    alphas_R = 1 + (a-1.)/(1+np.exp(-k*(t-a_date-1./gamma)))        
+    return S, E, I, R, C, I*alphas_I, R*alphas_R, C_m
 
-def SEIR_exams_backward (t, s0, e0, i0, r0, beta, sigma, gamma, a_date, k, 
+def SEIR_exams_backward (t, s0, e0, i0, r0, c0, beta, sigma, gamma, a_date, k, 
                          a = 0., Imax = np.inf):
     num_steps = len(t) - 1
     
@@ -41,6 +45,8 @@ def SEIR_exams_backward (t, s0, e0, i0, r0, beta, sigma, gamma, a_date, k,
     E = np.zeros(num_steps + 1)
     I = np.zeros(num_steps + 1)
     R = np.zeros(num_steps + 1)
+    C = np.zeros(num_steps + 1)
+    C_m = np.zeros(num_steps + 1)
     I_m = np.zeros(num_steps + 1)
 
     S[0] = s0
@@ -48,8 +54,10 @@ def SEIR_exams_backward (t, s0, e0, i0, r0, beta, sigma, gamma, a_date, k,
     I[0] = i0
     I_m[0] = i0
     R[0] = r0
+    C[0] = c0
+    C_m[0] = c0
 
-    alphas = 1 + (a-1.)/(1+np.exp(-k*(t-a_date)))
+    alphas_I = 1 + (a-1.)/(1+np.exp(-k*(t-a_date)))
     for step in range(num_steps):
         dt = t[step+1]-t[step]
         dt = t[step+1]-t[step]
@@ -64,26 +72,40 @@ def SEIR_exams_backward (t, s0, e0, i0, r0, beta, sigma, gamma, a_date, k,
         I[step + 1] = (I[step] + dt*sigma*E[step+1])/(1.+dt*gamma)
         S[step + 1] = S[step]/(1. + dt*beta*I[step+1]) 
         R[step + 1] = R[step] + gamma*I[step + 1]*dt
+        C[step + 1] = C[step] + sigma*E[step + 1]
+        C_m[step + 1] = C_m[step] + alphas_I[step]*sigma*E[step + 1]  
         #I_m[step+1] = I_m[step] + alpha * sigma * E[step]
         
-    return S, E, I, R, I*alphas, R*alphas
+    alphas_R = 1 + (a-1.)/(1+np.exp(-k*(t-a_date-1./gamma)))
+    return S, E, I, R, C, I*alphas_I, R*alphas_R, C_m
 
-def ValidateSEIR_exams (I_real, R_real, I, R):
-    return np.sqrt(((R_real - R)**2 + (I_real - I)**2).sum()/(len(I))*2)
+def ValidateSEIR_exams_IR (I_real, R_real, I, R):
+    return np.sqrt(((R_real - R)**2 + (I_real - I)**2).sum()/(len(I) + len(R)))
 
-def GridSearchSEIR_exams (ts, s0, e0, i0, r0, I_real, R_real):
-    print (len(ts), len(I_real))
+def ValidateSEIR_exams_I (I_real, I):
+    return np.sqrt(((I_real - I)**2).sum()/(len(I)))
+
+def GridSearchSEIR_exams (ts, s0, e0, i0, r0, c0, C_real, 
+                          transmission_coeff = 10**np.arange(-15, -4, 1., dtype = float), # 1 / day person
+                          latency_time = np.arange(5., 15, 1.), # days
+                          infectious_time = np.arange(5., 22, 1.), # days
+                          ks = 10**np.linspace(-3, -1, 9),
+                          a_dates = np.arange (5, 41, 5),
+                          a_s = np.linspace(0.25, 0.75, 9), val_R = False):
+    
+    #print (len(ts), len(I_real))
     #transmission_coeff = np.power(10, np.arange(-6, -10)) # 1 / day person
-    transmission_coeff = 10**np.arange(-9, -3, 1, dtype = float) # 1 / day person
-    latency_time = np.arange(5., 15, 1.) # days
-    infectious_time = np.arange(5., 22, 1.) # days
+
+    # transmission_coeff = 10**np.arange(-15, -5, 0.5, dtype = float) # 1 / day person
+    # latency_time = np.arange(5., 15, 1.) # days
+    # infectious_time = np.arange(5., 22, 1.) # days
 
     betas = transmission_coeff
     sigmas = 1./latency_time
     gammas = 1./infectious_time
-    ks = 10**np.linspace(-3, -1, 9)
-    a_dates = np.linspace (ts[0], ts[-1], 9)
-    a_s = np.linspace(0.25, 0.75, 9)
+    # ks = 10**np.linspace(-3, -1, 9)
+    # a_dates = np.linspace (ts[0], ts[-1], 9)
+    # a_s = np.linspace(0.25, 0.75, 9)
 
     min_ = [np.inf, betas[0], sigmas[0], gammas[0]]
 
@@ -96,12 +118,15 @@ def GridSearchSEIR_exams (ts, s0, e0, i0, r0, I_real, R_real):
                 for k in ks:
                     for a in a_s:
                         for a_date in a_dates:
-                            S, E, I, R, Im, Rm = SEIR_exams (ts, s0, e0, i0, r0, beta, sigma, gamma, a_date, k, a)
-                            RMSE = ValidateSEIR_exams (I_real, R_real, Im, Rm)
+                            S, E, I, R, C, Im, Rm, Cm = SEIR_exams (ts, s0, e0, i0, r0, c0, beta, sigma, gamma, a_date, k, a)
+                            if val_R:
+                                RMSE = ValidateSEIR_exams_IR (I_real, R_real, Im, Rm)
+                            else:
+                                RMSE = ValidateSEIR_exams_I (C_real, Cm)
                             if (RMSE < min_[0]):
                                 min_ = [RMSE, beta, sigma, gamma, a_date, k, a]
 
         print ("beta = ", beta, time() - tm)
-        print ("  min = ", min_)
+        print ("  min: RMSE = ", min_[0], "; b, s, g = ", min_[1:4], "; a_d, k, a = ", min_[4:], "; (", 1./min_[2], ", ", 1./min_[3], ")")
     return min_
 
