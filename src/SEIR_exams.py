@@ -6,9 +6,10 @@ def sigmoid(x, x0, k, b = 0., L = 1.):
     y = L / (1 + np.exp(-k*(x-x0)))+b
     return (y)
 
-def SEIR_exams (t, s0, e0, i0, r0, c0, beta, sigma, gamma, a_date, k, 
+def SEIR_exams (t, s0, e0, i0, r0, c0, c0m, beta, sigma, gamma, a_date, k, 
                 a = 0., Imax = np.inf):
     num_steps = len(t) - 1
+    alphas_C = 1 + (a-1.)/(1+np.exp(-k*(t-a_date)))
     
     S = np.zeros(num_steps + 1)
     E = np.zeros(num_steps + 1)
@@ -17,14 +18,14 @@ def SEIR_exams (t, s0, e0, i0, r0, c0, beta, sigma, gamma, a_date, k,
     C = np.zeros(num_steps + 1)
     C_m = np.zeros(num_steps + 1)
 
+
     S[0] = s0
     E[0] = e0
     I[0] = i0
     R[0] = r0
     C[0] = c0
-    C_m[0] = c0
+    C_m[0] = c0m
 
-    alphas_I = 1 + (a-1.)/(1+np.exp(-k*(t-a_date)))
     for step in range(num_steps):
         dt = t[step+1]-t[step]
         S[step+1] = S[step] + (-beta*I[step]*S[step])*dt
@@ -32,14 +33,14 @@ def SEIR_exams (t, s0, e0, i0, r0, c0, beta, sigma, gamma, a_date, k,
         I[step+1] = I[step] + (sigma*E[step] - gamma*I[step])*dt
         R[step+1] = R[step] + gamma*I[step]*dt
         C[step+1] = C[step] + sigma*E[step]
-        C_m[step + 1] = C_m[step] + alphas_I[step]*sigma*E[step]  
+        C_m[step + 1] = C_m[step] + alphas_C[step]*sigma*E[step]  
         #I_m[step+1] = I_m[step] + alpha * sigma * E[step]
-    alphas_R = 1 + (a-1.)/(1+np.exp(-k*(t-a_date-1./gamma)))        
-    return S, E, I, R, C, I*alphas_I, R*alphas_R, C_m
+    return S, E, I, R, C, C_m
 
-def SEIR_exams_backward (t, s0, e0, i0, r0, c0, beta, sigma, gamma, a_date, k, 
+def SEIR_exams_backward (t, s0, e0, i0, r0, c0, c0m, beta, sigma, gamma, a_date, k, 
                          a = 0., Imax = np.inf):
     num_steps = len(t) - 1
+    alphas_C = 1 + (a-1.)/(1+np.exp(-k*(t-a_date)))
     
     S = np.zeros(num_steps + 1)
     E = np.zeros(num_steps + 1)
@@ -47,17 +48,14 @@ def SEIR_exams_backward (t, s0, e0, i0, r0, c0, beta, sigma, gamma, a_date, k,
     R = np.zeros(num_steps + 1)
     C = np.zeros(num_steps + 1)
     C_m = np.zeros(num_steps + 1)
-    I_m = np.zeros(num_steps + 1)
 
     S[0] = s0
     E[0] = e0
     I[0] = i0
-    I_m[0] = i0
     R[0] = r0
     C[0] = c0
-    C_m[0] = c0
+    C_m[0] = c0m
 
-    alphas_I = 1 + (a-1.)/(1+np.exp(-k*(t-a_date)))
     for step in range(num_steps):
         dt = t[step+1]-t[step]
         dt = t[step+1]-t[step]
@@ -73,11 +71,10 @@ def SEIR_exams_backward (t, s0, e0, i0, r0, c0, beta, sigma, gamma, a_date, k,
         S[step + 1] = S[step]/(1. + dt*beta*I[step+1]) 
         R[step + 1] = R[step] + gamma*I[step + 1]*dt
         C[step + 1] = C[step] + sigma*E[step + 1]
-        C_m[step + 1] = C_m[step] + alphas_I[step]*sigma*E[step + 1]  
+        C_m[step + 1] = C_m[step] + alphas_C[step]*sigma*E[step + 1]  
         #I_m[step+1] = I_m[step] + alpha * sigma * E[step]
         
-    alphas_R = 1 + (a-1.)/(1+np.exp(-k*(t-a_date-1./gamma)))
-    return S, E, I, R, C, I*alphas_I, R*alphas_R, C_m
+    return S, E, I, R, C, C_m
 
 def ValidateSEIR_exams_IR (I_real, R_real, I, R):
     return np.sqrt(((R_real - R)**2 + (I_real - I)**2).sum()/(len(I) + len(R)))
@@ -85,7 +82,7 @@ def ValidateSEIR_exams_IR (I_real, R_real, I, R):
 def ValidateSEIR_exams_I (I_real, I):
     return np.sqrt(((I_real - I)**2).sum()/(len(I)))
 
-def GridSearchSEIR_exams (ts, s0, e0, i0, r0, c0, C_real, 
+def GridSearchSEIR_exams (ts, s0, e0, i0, r0, c0, c0m, C_real, 
                           transmission_coeff = 10**np.arange(-15, -4, 1., dtype = float), # 1 / day person
                           latency_time = np.arange(5., 15, 1.), # days
                           infectious_time = np.arange(5., 22, 1.), # days
@@ -118,7 +115,7 @@ def GridSearchSEIR_exams (ts, s0, e0, i0, r0, c0, C_real,
                 for k in ks:
                     for a in a_s:
                         for a_date in a_dates:
-                            S, E, I, R, C, Im, Rm, Cm = SEIR_exams (ts, s0, e0, i0, r0, c0, beta, sigma, gamma, a_date, k, a)
+                            S, E, I, R, C, Cm = SEIR_exams (ts, s0, e0, i0, r0, c0, c0m, beta, sigma, gamma, a_date, k, a)
                             if val_R:
                                 RMSE = ValidateSEIR_exams_IR (I_real, R_real, Im, Rm)
                             else:
