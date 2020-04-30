@@ -2,6 +2,8 @@ import numpy as np
 import math
 from time import time
 from sklearn.model_selection import ParameterGrid
+from joblib import Parallel, delayed
+import multiprocessing as mp
 
 def sigmoid(x, x0, k, b = 0., L = 1.):
     y = L / (1 + np.exp(-k*(x-x0)))+b
@@ -118,7 +120,7 @@ def GridSearchSEIR_exams_measures (ts, s0, e0, i0, r0, c0, c0m, C_real, i_dates_
                                    ks = 10**np.linspace(-3, -1, 9),
                                    a_dates = np.arange (5, 41, 5),
                                    a_s = np.linspace(0.25, 0.75, 9), val_R = False, backward = False):
-    
+
     tcs = transmission_coeffs
 
     d = {"b" + str(i): tcs[i] for i in range(len(tcs))}
@@ -166,3 +168,78 @@ def GridSearchSEIR_exams_measures (ts, s0, e0, i0, r0, c0, c0m, C_real, i_dates_
         print ("  min: RMSE = ", min_[0], "; b, s, g = ", min_[1:4], "; a_d, k, a = ", min_[4:], "; (", 1./min_[2], ", ", 1./min_[3], ")")
     return min_
 
+def ParGridSearchSEIR_exams_measures (ts, s0, e0, i0, r0, c0, c0m, C_real, i_dates_betas = [],
+                                   transmission_coeffs = np.array([10**np.arange(-15, -4, 1., dtype = float)]), # 1 / day person
+                                   latency_time = np.arange(5., 15, 1.), # days
+                                   infectious_time = np.arange(5., 22, 1.), # days
+                                   ks = 10**np.linspace(-3, -1, 9),
+                                   a_dates = np.arange (5, 41, 5),
+                                   a_s = np.linspace(0.25, 0.75, 9), val_R = False, backward = False):
+    ti=time()
+    import sys
+    tcs = transmission_coeffs
+
+    d = {"b" + str(i): tcs[i] for i in range(len(tcs))}
+    grid = ParameterGrid(d)
+
+    #betas = transmission_coeff
+    sigmas = 1./latency_time
+    gammas = 1./infectious_time
+    # ks = 10**np.linspace(-3, -1, 9)
+    # a_dates = np.linspace (ts[0], ts[-1], 9)
+    # a_s = np.linspace(0.25, 0.75, 9)
+
+    min_ = [np.inf, tcs[0], sigmas[0], gammas[0]]
+    print (d)
+
+    param=list()
+    #print (betas, sigmas, gammas)
+    results = {}
+    for g in grid:
+        tm = time()
+        betas = np.zeros(len(tcs))
+        for k in g.keys():
+            i_g = int(k[1:])
+            betas[i_g] = g[k]
+        for sigma in sigmas:
+            for gamma in gammas:
+                for k in ks:
+                    for a in a_s:
+                        for a_date in a_dates:
+                            param.append([ts, s0, e0, i0, r0, c0, c0m, i_dates_betas, betas, sigma, gamma, a_date, k, a])
+
+    #PARALLEL PROCESSING
+    NPROC = min(mp.cpu_count(),22)
+
+    def p_SEIR_exams_measures(p):
+        S, E, I, R, C, Cm = SEIR_exams_measures (p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[11], p[12], p[13])
+        return (Cm,[p[8],p[9],p[10],p[11],p[12],p[13]])
+
+    def p_SEIR_exams_measures_backward(p):
+        S, E, I, R, C, Cm = SEIR_exams_measures_backward (p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[11], p[12], p[13])
+        return (Cm,[p[8],p[9],p[10],p[11],p[12],p[13]])
+
+    def p_ValidateSEIR(Cm):
+        RMSE = ValidateSEIR_exams_I(C_real,Cm[0])
+        return (RMSE,Cm[1])
+
+    if backward:
+        iCm = Parallel(n_jobs=NPROC)(delayed(p_SEIR_exams_measures_backward)(p) for p in param)
+    else:
+        iCm = Parallel(n_jobs=NPROC)(delayed(p_SEIR_exams_measures)(p) for p in param)
+
+    if val_R:
+#        RMSE = ValidateSEIR_exams_IR (I_real, R_real, Im, Rm)
+        sys.exit("Not Implemented")
+    else:
+        RMSE = Parallel(n_jobs=NPROC)(delayed(p_ValidateSEIR)(Cm) for Cm in iCm)
+
+    minimo = min(RMSE, key = lambda t: t[0])
+#   min_ = [RMSE, betas, sigma, gamma, a_date, k, a]
+    min_ = [minimo[0],minimo[1][0],minimo[1][1],minimo[1][2],minimo[1][3],minimo[1][4],minimo[1][5]]
+
+    tf=time()
+#    print(tf-ti)
+#        print ("betas = ", betas, time() - tm)
+#        print ("  min: RMSE = ", min_[0], "; b, s, g = ", min_[1:4], "; a_d, k, a = ", min_[4:], "; (", 1./min_[2], ", ", 1./min_[3], ")")
+    return min_
