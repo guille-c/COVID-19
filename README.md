@@ -11,3 +11,7 @@ Este repositorio contiene proyecciones hechas por el equipo de proyecciones de l
 [Informe 4 de Junio 2020](https://github.com/guille-c/COVID-19/blob/master/Informes/Proyecciones%20COVID-19%20UdeC%202020-06-04.pdf)
 
 [Informe 11 de Junio 2020](https://github.com/guille-c/COVID-19/blob/master/Informes/Proyecciones%20COVID-19%20UdeC%202020-06-11.pdf)
+
+[Informe 15 de Junio 2020](https://github.com/guille-c/COVID-19/blob/master/Informes/Proyecciones%20COVID-19%20UdeC%202020-06-15.pdf)
+
+[Informe 22 de Junio 2020](https://github.com/guille-c/COVID-19/blob/master/Informes/Proyecciones%20COVID-19%20UdeC%202020-06-22.pdf)
